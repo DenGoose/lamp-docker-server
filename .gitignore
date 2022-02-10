@@ -1,0 +1,7 @@
+/.idea/
+/databases/
+/logs/
+/*env
+/portainer_data/
+/ext_www/
+/www/

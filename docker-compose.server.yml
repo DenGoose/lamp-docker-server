@@ -1,0 +1,37 @@
+version: "3.5"
+
+services:
+
+  httpd:
+    build:
+      context: httpd
+    container_name: '${APP_NAME}-httpd'
+    working_dir: /var/www/html
+    networks:
+      - main_proxy
+    volumes:
+      - "./ext_www/${APP_NAME}:/var/www/html"
+      - "./configs/apache/sites-enabled:/etc/apache2/sites-enabled"
+      - "./configs/php:/usr/local/etc/php/conf.d"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.${APP_NAME}.entrypoints=http"
+      - "traefik.http.routers.${APP_NAME}.rule=Host(`${APP_NAME}.${MAIN_DOMAIN}`)"
+      - "traefik.http.services.${APP_NAME}.loadbalancer.server.port=80"
+
+  mariadb:
+    image: mariadb:10.5
+    container_name: "${APP_NAME}-db"
+    networks:
+      - main_proxy
+    environment:
+      MYSQL_ROOT_PASSWORD: '${MYSQL_ROOT_PASS}'
+      MYSQL_USER: '${MYSQL_USER}'
+      MYSQL_PASSWORD: '${MYSQL_PASS}'
+      MYSQL_DATABASE: '${MYSQL_DB}'
+    volumes:
+      - ./databases/${APP_NAME}:/var/lib/mysql
+
+networks:
+  main_proxy:
+    external: true

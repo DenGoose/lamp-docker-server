@@ -1,0 +1,42 @@
+version: "3.5"
+
+services:
+
+  traefik:
+    image: "traefik:v2.5"
+    container_name: "traefik"
+    restart: always
+    ports:
+      - "80:80"
+    networks:
+      - main_proxy
+    volumes:
+        - "/var/run/docker.sock:/var/run/docker.sock:ro"
+        - "/etc/localtime:/etc/localtime:ro"
+        - "./configs/traefik/traefik.yml:/traefik.yml:ro"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik.entrypoints=http"
+      - "traefik.http.routers.traefik.rule=Host(`traefik.${MAIN_DOMAIN}`)"
+      - "traefik.http.routers.traefik.service=api@internal"
+      - "traefik.http.services.traefik-traefik.loadbalancer.server.port=888"
+
+  portainer:
+    image: cr.portainer.io/portainer/portainer-ce:2.9.3
+    container_name: "portainer"
+    restart: always
+    networks:
+      - main_proxy
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "./portainer_data:/data"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.portainer.entrypoints=http"
+      - "traefik.http.routers.portainer.rule=Host(`portainer.${MAIN_DOMAIN}`)"
+      - "traefik.http.services.portainer.loadbalancer.server.port=9000"
+
+networks:
+  main_proxy:
+    driver: bridge
+    name: main_proxy

@@ -44,7 +44,7 @@ function getServersList(): array
 
 	$str = shell_exec($wsl . 'docker container ls -a --format=\'{{json .}}\' 2>&1');
 
-	$arr = array_filter(explode("\n", $str), function ($itm)
+	$arr = array_filter(explode("\n", $str ?? ''), function ($itm)
 	{
 		return $itm;
 	});
@@ -141,6 +141,16 @@ function delTree($dir): bool
 	}
 }
 
+function getEnvValue(string $key): string
+{
+	$env = explode("\n", file_get_contents($_SERVER['DOCUMENT_ROOT'] . '/.env'));
+	$temp = array_filter($env, function($itm) use ($key)
+	{
+		return stristr($itm, needle: $key);
+	});
+	return explode('=', array_shift($temp))[1] ?? '';
+}
+
 switch ($command)
 {
 	case "up":
@@ -151,6 +161,16 @@ switch ($command)
 		else
 		{
 			server(server: $server, command: 'up -d');
+			if (strlen($wsl) && !strlen(shell_exec("wsl grep '${server}' /mnt/c/Windows/System32/drivers/etc/hosts 2>&1") ?? ''))
+			{
+				$domain = getEnvValue('MAIN_DOMAIN');
+
+				shell_exec("echo 127.0.0.1 ${server}.${domain} >> c:\\windows\\system32\\drivers\\etc\\hosts");
+			}
+			elseif (!strlen($wsl))
+			{
+				// TODO сделать для линукса
+			}
 		}
 		break;
 	case "down":

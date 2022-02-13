@@ -22,7 +22,7 @@ jobs:
         docker login -u $DOCKER_USER -p $DOCKER_PASSWORD
     - name: Docker build
       run: 
-        docker build ./httpd/ dengoose/httpd-php8
+        docker build ./httpd dengoose/httpd-php8
     - name: Docker push
       run:
         docker push dengoose/httpd-php8

@@ -4,14 +4,14 @@
 $_SERVER['DOCUMENT_ROOT'] = __DIR__;
 const SERVER_MAIN_PROXY = 'proxy';
 
-global $wsl;
-$wsl = '';
+global $wslForWindows;
+$wslForWindows = '';
 
 $isWin = shell_exec("uname -s 2>&1");
 
 if (!stristr($isWin, 'Linux') || stristr($isWin, 'cmdlet') || stristr($isWin, '"uname"'))
 {
-	$wsl = 'wsl ';
+	$wslForWindows = 'wsl ';
 }
 
 $command = $argv[1] ?? '';
@@ -36,13 +36,13 @@ function createEnv(string $path, array $ar): void
 
 function getServersList(): array
 {
-	global $wsl;
+	global $wslForWindows;
 
 	$dirList = array_filter(scandir($_SERVER['DOCUMENT_ROOT'] . '/sites/'), function($itm) {
 		return (($itm != '.') && ($itm != '..') && file_exists($_SERVER['DOCUMENT_ROOT'] . '/sites/' . $itm . '/.env'));
 	});
 
-	$str = shell_exec($wsl . 'docker container ls -a --format=\'{{json .}}\' 2>&1');
+	$str = shell_exec($wslForWindows . 'docker container ls -a --format=\'{{json .}}\' 2>&1');
 
 	$arr = array_filter(explode("\n", $str ?? ''), function ($itm)
 	{
@@ -161,13 +161,13 @@ switch ($command)
 		else
 		{
 			server(server: $server, command: 'up -d');
-			if (strlen($wsl) && !strlen(shell_exec("wsl grep '${server}' /mnt/c/Windows/System32/drivers/etc/hosts 2>&1") ?? ''))
+			if (strlen($wslForWindows) && !strlen(shell_exec("wsl grep '${server}' /mnt/c/Windows/System32/drivers/etc/hosts 2>&1") ?? ''))
 			{
 				$domain = getEnvValue('MAIN_DOMAIN');
 
 				shell_exec("echo 127.0.0.1 ${server}.${domain} >> c:\\windows\\system32\\drivers\\etc\\hosts");
 			}
-			elseif (!strlen($wsl))
+			elseif (!strlen($wslForWindows))
 			{
 				// TODO сделать для линукса
 			}
@@ -191,6 +191,11 @@ switch ($command)
 	case "stop":
 		if ($server == SERVER_MAIN_PROXY)
 		{
+			$servers = array_keys(getServersList());
+			foreach ($servers as $itm)
+			{
+				server(server: $itm, command: 'stop');
+			}
 			proxy(command: 'stop');
 		}
 		else
@@ -212,8 +217,17 @@ switch ($command)
 	case "restart":
 		if ($server == SERVER_MAIN_PROXY)
 		{
+			$servers = array_keys(getServersList());
+			foreach ($servers as $itm)
+			{
+				server(server: $itm, command: 'down');
+			}
 			proxy(command: 'down');
 			proxy(command: 'up -d');
+			foreach ($servers as $itm)
+			{
+				server(server: $itm, command: 'up -d');
+			}
 		}
 		else
 		{
@@ -259,11 +273,20 @@ switch ($command)
 		}
 		else
 		{
+			echo strlen($wslForWindows) ? "\n" : '';
 			echo "0 servers\n";
 		}
 
 		break;
+	case 'clone':
+		//TODO сделать клонирование серверов
+		break;
+	case 'help':
+		//TODO сделать вывод списка команд
+		break;
 	default:
+		echo strlen($wslForWindows) ? "\n" : '';
+		echo 'Для вывода списка команд выполните "php lamp.php help"';
 		break;
 }
 echo "\033[0m";

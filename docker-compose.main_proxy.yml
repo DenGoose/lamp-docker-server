@@ -36,6 +36,36 @@ services:
       - "traefik.http.routers.portainer.rule=Host(`portainer.${MAIN_DOMAIN}`)"
       - "traefik.http.services.portainer.loadbalancer.server.port=9000"
 
+  teamcity:
+    restart: always
+    image: jetbrains/teamcity-server:${TEAMCITY_VERSION}
+    container_name: "server-cli"
+    volumes:
+      - './teamcity/teamcity_data:/data/teamcity_server/datadir'
+    networks:
+      - main_proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.server-cli.entrypoints=http"
+      - "traefik.http.routers.server-cli.rule=Host(`cli.${MAIN_DOMAIN}`)"
+      - "traefik.http.services.server-cli.loadbalancer.server.port=8111"
+
+  teamcity-agent:
+    image: jetbrains/teamcity-agent:${TEAMCITY_VERSION}-linux-sudo
+    privileged: true
+    restart: always
+    container_name: "teamcity-agent"
+    networks:
+      - main_proxy
+    volumes:
+      - './teamcity/teamcity_agents/agent:/data/teamcity_agent/conf'
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "./:/home/buildagent/server_dir"
+    environment:
+      - DOCKER_IN_DOCKER=start
+      - SERVER_URL=server-cli:8111
+      - AGENT_NAME=${MAIN_DOMAIN}-teamcity-agent
+
 networks:
   main_proxy:
     driver: bridge

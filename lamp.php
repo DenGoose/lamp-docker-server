@@ -156,6 +156,11 @@ switch ($command)
 	case "down":
 		if ($server == SERVER_MAIN_PROXY)
 		{
+			$servers = array_keys(getServersList());
+			foreach ($servers as $itm)
+			{
+				server(server: $itm, command: 'down');
+			}
 			proxy(command: 'down');
 		}
 		else

@@ -3,8 +3,7 @@ version: "3.5"
 services:
 
   httpd:
-    build:
-      context: httpd
+    image: dengoose/httpd-php8:latest
     container_name: '${APP_NAME}-httpd'
     working_dir: /var/www/html
     networks:

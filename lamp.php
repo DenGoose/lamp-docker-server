@@ -1,5 +1,5 @@
 <?php
-/** PHP 8.0	**/
+/** PHP 8.0    **/
 
 $_SERVER['DOCUMENT_ROOT'] = __DIR__;
 const SERVER_MAIN_PROXY = 'proxy';
@@ -38,13 +38,14 @@ function getServersList(): array
 {
 	global $wslForWindows;
 
-	$dirList = array_filter(scandir($_SERVER['DOCUMENT_ROOT'] . '/sites/'), function($itm) {
+	$dirList = array_filter(scandir($_SERVER['DOCUMENT_ROOT'] . '/sites/'), function($itm)
+	{
 		return (($itm != '.') && ($itm != '..') && file_exists($_SERVER['DOCUMENT_ROOT'] . '/sites/' . $itm . '/.env'));
 	});
 
 	$str = shell_exec($wslForWindows . 'docker container ls -a --format=\'{{json .}}\' 2>&1');
 
-	$arr = array_filter(explode("\n", $str ?? ''), function ($itm)
+	$arr = array_filter(explode("\n", $str ?? ''), function($itm)
 	{
 		return $itm;
 	});
@@ -68,11 +69,39 @@ function getServersList(): array
 					'STATUS' => $temp['Status'],
 					'RUNNING_FOR' => $temp['RunningFor']
 				];
+
+				break;
 			}
 		}
 	}
 
 	return $result;
+}
+
+function isProxyOn(): bool
+{
+	global $wslForWindows;
+
+	$str = shell_exec($wslForWindows . 'docker container ls -a --format=\'{{json .}}\' 2>&1');
+
+	$arr = array_filter(explode("\n", $str ?? ''), function($itm)
+	{
+		return $itm;
+	});
+
+	$json = json_decode("[\n" . implode(",\n", $arr) . "\n]");
+
+	foreach ($json as $jsonItem)
+	{
+		$temp = (array)$jsonItem;
+
+		if ($temp['Names'] == 'traefik' && $temp['State'] != 'exited')
+		{
+			return true;
+		}
+	}
+
+	return false;
 }
 
 function proxy(string $command)
@@ -104,7 +133,8 @@ function deleteServerFiles(string $server)
 		proxy(command: 'down');
 
 		$str = str_replace('/', '', file_get_contents($_SERVER['DOCUMENT_ROOT'] . "/.gitignore"));
-		$dirs = array_filter(explode("\n", $str), function($itm){
+		$dirs = array_filter(explode("\n", $str), function($itm)
+		{
 			return (trim($itm) != '.idea') && (trim($itm) != '*env');
 		});
 
@@ -112,8 +142,7 @@ function deleteServerFiles(string $server)
 		{
 			delTree($_SERVER['DOCUMENT_ROOT'] . '/' . $dir);
 		}
-	}
-	else
+	} else
 	{
 		delTree($_SERVER['DOCUMENT_ROOT'] . "/ext_www/${server}/");
 		delTree($_SERVER['DOCUMENT_ROOT'] . "/sites/${server}/");
@@ -125,7 +154,8 @@ function delTree($dir): bool
 {
 	if (is_dir($dir))
 	{
-		$files = array_filter(scandir($dir) ?? [], function($itm) {
+		$files = array_filter(scandir($dir) ?? [], function($itm)
+		{
 			return (($itm != '.') && ($itm != '..'));
 		});
 
@@ -134,8 +164,7 @@ function delTree($dir): bool
 			(is_dir("$dir/$file")) ? delTree("$dir/$file") : unlink("$dir/$file");
 		}
 		return rmdir($dir);
-	}
-	else
+	} else
 	{
 		return false;
 	}
@@ -157,20 +186,26 @@ switch ($command)
 		if ($server == SERVER_MAIN_PROXY)
 		{
 			proxy(command: 'up -d');
-		}
-		else
+		} else
 		{
+			if (!isProxyOn())
+			{
+				proxy(command: 'up -d');
+			}
+
+			$domain = getEnvValue('MAIN_DOMAIN');
+
 			server(server: $server, command: 'up -d');
 			if (strlen($wslForWindows) && !strlen(shell_exec("wsl grep '${server}' /mnt/c/Windows/System32/drivers/etc/hosts 2>&1") ?? ''))
 			{
-				$domain = getEnvValue('MAIN_DOMAIN');
-
 				shell_exec("echo 127.0.0.1 ${server}.${domain} >> c:\\windows\\system32\\drivers\\etc\\hosts");
-			}
-			elseif (!strlen($wslForWindows))
+			} elseif (!strlen($wslForWindows))
 			{
 				// TODO сделать для линукса
 			}
+
+			echo strlen($wslForWindows) ? "\n" : '';
+			echo "Ссылка на сайт http://${server}.${domain}\n";
 		}
 		break;
 	case "down":
@@ -182,8 +217,7 @@ switch ($command)
 				server(server: $itm, command: 'down');
 			}
 			proxy(command: 'down');
-		}
-		else
+		} else
 		{
 			server(server: $server, command: 'down');
 		}
@@ -197,8 +231,7 @@ switch ($command)
 				server(server: $itm, command: 'stop');
 			}
 			proxy(command: 'stop');
-		}
-		else
+		} else
 		{
 			server(server: $server, command: 'stop');
 		}
@@ -207,8 +240,7 @@ switch ($command)
 		if ($server == SERVER_MAIN_PROXY)
 		{
 			deleteServerFiles('proxy');
-		}
-		else
+		} else
 		{
 			server(server: $server, command: 'down');
 			deleteServerFiles($server);
@@ -228,10 +260,9 @@ switch ($command)
 			{
 				server(server: $itm, command: 'up -d');
 			}
-		}
-		else
+		} else
 		{
-			server(server: $server, command: 'down -d');
+			server(server: $server, command: 'down');
 			server(server: $server, command: 'up -d');
 		}
 		break;
@@ -239,8 +270,7 @@ switch ($command)
 		if ($server == SERVER_MAIN_PROXY)
 		{
 			proxy(command: 'build --no-cache');
-		}
-		else
+		} else
 		{
 			server(server: $server, command: 'build --no-cache');
 		}
@@ -270,8 +300,7 @@ switch ($command)
 				}
 				echo "\n";
 			}
-		}
-		else
+		} else
 		{
 			echo strlen($wslForWindows) ? "\n" : '';
 			echo "0 servers\n";
@@ -284,9 +313,12 @@ switch ($command)
 	case 'help':
 		//TODO сделать вывод списка команд
 		break;
+	case 'run':
+		//TODO сделать run контейнера
+		break;
 	default:
 		echo strlen($wslForWindows) ? "\n" : '';
-		echo 'Для вывода списка команд выполните "php lamp.php help"';
+		echo "Для вывода списка команд выполните \"php lamp.php help\n\"";
 		break;
 }
 echo "\033[0m";

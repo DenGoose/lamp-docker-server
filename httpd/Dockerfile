@@ -20,5 +20,7 @@ RUN install-php-extensions xdebug
 
 COPY --from=composer:2.0 /usr/bin/composer /usr/local/bin/composer
 
+RUN export PATH=~/.composer/vendor/bin:$PATH
+
 RUN mkdir /tmp/php_sessions
 RUN chmod 777 /tmp/php_sessions
